@@ -1,0 +1,4 @@
+- Resolver calendar
+- Juntar GTFS
+
+Parece estar ok. Rechecar.
