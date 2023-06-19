@@ -86,8 +86,6 @@ criar_sumario_trips <- function(trips, days, service_id) {
   
 }
 
-#validar DU
-
 trips_summary_list <- criar_sumario_trips(trips, c(2, 3, 4, 5, 6), "U")
 sumario_du <- trips_summary_list[[1]]
 vel_media_du <- trips_summary_list[[2]]
