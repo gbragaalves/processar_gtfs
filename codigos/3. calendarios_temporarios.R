@@ -7,19 +7,18 @@ ano_gtfs <- "2023"
 mes_gtfs <- "06"
 quinzena_gtfs <- "02"
 
-endereco_gtfs <- paste0(
-  "../../dados/gtfs/", ano_gtfs, "/sppo",
-  "_", ano_gtfs, "-", mes_gtfs, "-", quinzena_gtfs, "Q_PROC.zip"
+endereco_gtfs <- file.path(
+  "../../dados/gtfs", ano_gtfs,
+  paste0("sppo_", ano_gtfs, "-", mes_gtfs, "-", quinzena_gtfs, "Q_PROC.zip")
 )
 
 gtfs <- read_gtfs(endereco_gtfs)
 
 desvios_tabela_id <- "1L7Oq1vqG5S_uOs_NdqgF4HG-Ac6gEyZrzQJYLpZH3OI"
 
-tabela_desvios <- read_sheet(desvios_tabela_id, "linhas_desvios")
-descricao_desvios <- read_sheet(desvios_tabela_id, "descricao_desvios") %>%
-  filter(data_inicio < Sys.Date()) %>%
-  filter(data_fim > Sys.Date())
+tabela_desvios <- read_sheet(desvios_tabela_id, sheet = "linhas_desvios")
+descricao_desvios <- read_sheet(desvios_tabela_id, sheet = "descricao_desvios") %>%
+  filter(data_inicio < Sys.Date(), data_fim > Sys.Date())
 
 desvios <- c("servico", descricao_desvios$cod_desvio)
 
@@ -36,121 +35,99 @@ rotas_afetadas_desvios <- gtfs$routes %>%
 
 gtfs$trips <- gtfs$trips %>%
   mutate(service_id = case_when(
-    service_id == "U" & !(route_id %in% rotas_afetadas_desvios) ~ "U_REG",
-    service_id == "S" & !(route_id %in% rotas_afetadas_desvios) ~ "S_REG",
-    service_id == "D" & !(route_id %in% rotas_afetadas_desvios) ~ "D_REG",
+    service_id %in% c("U", "S", "D") & !(route_id %in% rotas_afetadas_desvios) ~ paste0(service_id, "_REG"),
     TRUE ~ service_id
   ))
-
 
 gtfs$calendar <- gtfs$calendar %>%
   mutate(service_id = recode(service_id, U = "U_REG", S = "S_REG", D = "D_REG"))
 
-lista_eventos <- unique(descricao_desvios$cod_desvio) %>%
+lista_eventos <- descricao_desvios$cod_desvio %>%
+  unique() %>%
   na.omit()
 
 excecoes <- data.frame()
 
-for (i in 1:length(lista_eventos)) {
-  evento <- lista_eventos[i]
-
+for (evento in lista_eventos) {
   linhas_afetadas_evento <- tabela_desvios %>%
-    filter(get(evento)) %>%
+    filter(!!sym(evento)) %>%
     select(servico) %>%
     left_join(select(gtfs$routes, route_short_name, route_id), by = c("servico" = "route_short_name")) %>%
     pull(route_id)
 
   gtfs$trips <- gtfs$trips %>%
     mutate(service_id = case_when(
-      service_id == "U" & route_id %in% linhas_afetadas_evento ~ paste0("U_DESAT_", evento),
-      service_id == "S" & route_id %in% linhas_afetadas_evento ~ paste0("S_DESAT_", evento),
-      service_id == "D" & route_id %in% linhas_afetadas_evento ~ paste0("D_DESAT_", evento),
+      service_id %in% c("U", "S", "D") & route_id %in% linhas_afetadas_evento ~ paste0(service_id, "_DESAT_", evento),
       TRUE ~ service_id
     ))
 
   calendarios_novos <- gtfs$calendar %>%
-    filter(service_id %in% c(
-      paste0("U_", evento),
-      paste0("S_", evento),
-      paste0("D_", evento)
-    )) %>%
+    filter(service_id %in% c(paste0(c("U", "S", "D"), "_", evento))) %>%
     mutate(service_id = case_when(
-      service_id == paste0("U_", evento) ~ paste0("U_DESAT_", evento),
-      service_id == paste0("S_", evento) ~ paste0("S_DESAT_", evento),
-      service_id == paste0("D_", evento) ~ paste0("D_DESAT_", evento),
+      service_id %in% paste0(c("U", "S", "D"), "_", evento) ~ paste0(service_id, "_DESAT_", evento),
       TRUE ~ service_id
     ))
 
-  gtfs$calendar <- gtfs$calendar %>%
-    bind_rows(., calendarios_novos)
+  gtfs$calendar <- bind_rows(gtfs$calendar, calendarios_novos)
 
-  tabela_evento <- descricao_desvios[i, ]
+  tabela_evento <- descricao_desvios %>% filter(cod_desvio == evento)
 
-  excecoes_datas_at <- gtfs$calendar_dates %>%
-    filter(as.IDate(date) %in% c(as.IDate(tabela_evento$data_inicio):as.IDate(tabela_evento$data_fim))) %>%
+  excecoes_datas_ativar <- gtfs$calendar_dates %>%
+    filter(as_date(date) %in% seq(as_date(tabela_evento$data_inicio), as_date(tabela_evento$data_fim), by = "day")) %>%
     mutate(service_id = case_when(
-      service_id == "U" ~ paste0("U_", evento),
-      service_id == "S" ~ paste0("S_", evento),
-      service_id == "D" ~ paste0("D_", evento),
+      service_id %in% c("U", "S", "D") ~ paste0(service_id, "_", evento),
       TRUE ~ service_id
     ))
 
-  excecoes_datas_desat <- gtfs$calendar_dates %>%
-    filter(as.IDate(date) %in% c(as.IDate(tabela_evento$data_inicio):as.IDate(tabela_evento$data_fim))) %>%
+  excecoes_datas_desativar <- gtfs$calendar_dates %>%
+    filter(as_date(date) %in% seq(as_date(tabela_evento$data_inicio), as_date(tabela_evento$data_fim), by = "day")) %>%
     mutate(service_id = case_when(
-      service_id == "U" ~ paste0("U_DESAT_", evento),
-      service_id == "S" ~ paste0("S_DESAT_", evento),
-      service_id == "D" ~ paste0("D_DESAT_", evento),
+      service_id %in% c("U", "S", "D") ~ paste0(service_id, "_DESAT_", evento),
       TRUE ~ service_id
     )) %>%
     mutate(exception_type = "2")
 
   calendar_dates_incluir <- tabela_evento %>%
     mutate(
-      data_inicio = as.Date(data_inicio),
-      data_fim = as.Date(data_fim)
+      data_inicio = as_date(data_inicio),
+      data_fim = as_date(data_fim)
     ) %>%
     rowwise() %>%
     mutate(date = list(seq(data_inicio, data_fim, by = "day"))) %>%
     tidyr::unnest(date) %>%
     select(service_id = cod_desvio, date) %>%
-    filter(date %nin% excecoes_datas_at$date) %>%
-    mutate(dia = lubridate::wday(date)) %>%
+    filter(!date %in% excecoes_datas_ativar$date) %>%
     mutate(service_id = case_when(
-      dia %in% c(2:6) ~ paste0("U_", evento),
-      dia == 7 ~ paste0("S_", evento),
-      dia == 1 ~ paste0("D_", evento),
+      lubridate::wday(date) %in% c(2:6) ~ paste0("U_", evento),
+      lubridate::wday(date) == 7 ~ paste0("S_", evento),
+      lubridate::wday(date) == 1 ~ paste0("D_", evento),
       TRUE ~ service_id
     )) %>%
-    mutate(exception_type = "1") %>%
-    select(-c(dia))
-
+    mutate(exception_type = "1")
 
   calendar_dates_excluir <- tabela_evento %>%
     mutate(
-      data_inicio = as.Date(data_inicio),
-      data_fim = as.Date(data_fim)
+      data_inicio = as_date(data_inicio),
+      data_fim = as_date(data_fim)
     ) %>%
     rowwise() %>%
     mutate(date = list(seq(data_inicio, data_fim, by = "day"))) %>%
     tidyr::unnest(date) %>%
     select(service_id = cod_desvio, date) %>%
-    filter(date %nin% excecoes_datas_desat$date) %>%
-    mutate(dia = lubridate::wday(date)) %>%
+    filter(!date %in% excecoes_datas_desativar$date) %>%
     mutate(service_id = case_when(
-      dia %in% c(2:6) ~ paste0("U_DESAT_", evento),
-      dia == 7 ~ paste0("S_DESAT_", evento),
-      dia == 1 ~ paste0("D_DESAT_", evento),
+      lubridate::wday(date) %in% c(2:6) ~ paste0("U_DESAT_", evento),
+      lubridate::wday(date) == 7 ~ paste0("S_DESAT_", evento),
+      lubridate::wday(date) == 1 ~ paste0("D_DESAT_", evento),
       TRUE ~ service_id
     )) %>%
-    mutate(exception_type = "2") %>%
-    select(-c(dia))
+    mutate(exception_type = "2")
 
   calendar_dates_evento <- rbindlist(list(
     calendar_dates_incluir,
     calendar_dates_excluir,
-    excecoes_datas_at,
-    excecoes_datas_desat
+    excecoes_datas_ativar,
+    excecoes_datas_desativar
   )) %>%
     arrange(date)
 
@@ -159,13 +136,13 @@ for (i in 1:length(lista_eventos)) {
 }
 
 gtfs$calendar_dates <- gtfs$calendar_dates %>%
-  mutate(service_id = case_when(
-    service_id == "U" ~ "U_REG",
-    service_id == "S" ~ "S_REG",
-    service_id == "D" ~ "D_REG",
-    TRUE ~ service_id
-  )) %>%
-  mutate(exception_type = as.character(exception_type)) %>%
+  mutate(
+    service_id = case_when(
+      service_id %in% c("U", "S", "D") ~ paste0(service_id, "_REG"),
+      TRUE ~ service_id
+    ),
+    exception_type = as.character(exception_type)
+  ) %>%
   bind_rows(excecoes)
 
 feed_info <- gtfs$feed_info %>%
@@ -175,6 +152,9 @@ feed_info <- gtfs$feed_info %>%
   )
 
 gtfs$calendar_dates <- gtfs$calendar_dates %>%
-  filter(as.IDate(date) %in% c(as.IDate(feed_info$feed_start_date):as.IDate(feed_info$feed_end_date)))
+  filter(date %in% seq(ymd(gtfs$feed_info$feed_start_date),
+    ymd(gtfs$feed_info$feed_end_date) + 60,
+    by = "day"
+  ))
 
 write_gtfs(gtfs, endereco_gtfs)
