@@ -7,7 +7,7 @@ ano_gtfs <- '2023'
 mes_gtfs <- '06'
 quinzena_gtfs <- '02'
 
-gtfs_processar <- 'sppo'
+gtfs_processar <- 'brt'
 
 endereco_gtfs <- paste0("../../dados/gtfs/",ano_gtfs,"/",gtfs_processar,
                         "_",ano_gtfs,"-",mes_gtfs,"-",quinzena_gtfs,"Q.zip")
@@ -15,9 +15,10 @@ endereco_gtfs <- paste0("../../dados/gtfs/",ano_gtfs,"/",gtfs_processar,
 if (gtfs_processar == "brt") {
   path_nm <- paste0("../../dados/viagens/", gtfs_processar, "/", ano_velocidade, "/", mes_velocidade, "/validas")
   nm <- list.files(path = path_nm, full.names = TRUE, pattern = "*.csv", recursive = TRUE)
-  trips <- map_df(nm, fread) %>%
+  trips <- map_df(nm, fread, colClasses = 'character') %>%
     select(servico, direction_id, datetime_partida, datetime_chegada, distancia_planejada, data) %>%
-    mutate(distancia_planejada = distancia_planejada / 1000)
+    mutate(distancia_planejada = as.numeric(distancia_planejada),
+           distancia_planejada = distancia_planejada / 1000)
 } else {
   path_nm <- paste0("../../dados/viagens/", gtfs_processar, "/", ano_velocidade, "/", mes_velocidade, "/")
   nm <- list.files(path = path_nm, full.names = TRUE, pattern = "*.rds", recursive = TRUE)
