@@ -4,8 +4,8 @@
 pacman::p_load(gtfstools, dplyr, data.table, googlesheets4, purrr, tidyverse, Hmisc)
 
 ano_gtfs <- "2023"
-mes_gtfs <- "06"
-quinzena_gtfs <- "02"
+mes_gtfs <- "07"
+quinzena_gtfs <- "01"
 
 endereco_gtfs <- file.path(
   "../../dados/gtfs", ano_gtfs,

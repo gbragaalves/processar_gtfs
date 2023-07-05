@@ -4,10 +4,10 @@ ano_velocidade <- '2023'
 mes_velocidade <- '05'
 
 ano_gtfs <- '2023'
-mes_gtfs <- '06'
+mes_gtfs <- '07'
 quinzena_gtfs <- '01'
 
-gtfs_processar <- 'brt'
+gtfs_processar <- 'sppo'
 
 endereco_gtfs <- paste0("../../dados/gtfs/",ano_gtfs,"/",gtfs_processar,
                         "_",ano_gtfs,"-",mes_gtfs,"-",quinzena_gtfs,"Q.zip")

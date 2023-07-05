@@ -1,8 +1,8 @@
 pacman::p_load(gtfstools, dplyr, data.table, Hmisc)
 
 ano_gtfs <- "2023"
-mes_gtfs <- "06"
-quinzena_gtfs <- "02"
+mes_gtfs <- "07"
+quinzena_gtfs <- "01"
 
 endereco_sppo <- file.path("../../dados/gtfs", ano_gtfs,
   paste0("sppo_", ano_gtfs, "-", mes_gtfs, "-", quinzena_gtfs, "Q_PROC.zip"))
@@ -26,7 +26,7 @@ tarifas_frescao <- fread("../../dados/insumos/frescao/tarifas.csv") %>%
     ),
     fare_id = paste(fare_id, agency_id, sep = "_")
   ) %>%
-  select(-route_short_name)
+  select(-route_short_name, agency_id)
 
 fare_rules <- as.data.table(gtfs_sppo$routes) %>%
   select(route_short_name, route_id, route_type, agency_id) %>%
