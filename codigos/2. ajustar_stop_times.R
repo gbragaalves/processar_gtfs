@@ -5,7 +5,7 @@ mes_velocidade <- '05'
 
 ano_gtfs <- '2023'
 mes_gtfs <- '06'
-quinzena_gtfs <- '02'
+quinzena_gtfs <- '01'
 
 gtfs_processar <- 'brt'
 
@@ -18,7 +18,7 @@ if (gtfs_processar == "brt") {
   trips <- map_df(nm, fread, colClasses = 'character') %>%
     select(servico, direction_id, datetime_partida, datetime_chegada, distancia_planejada, data) %>%
     mutate(distancia_planejada = as.numeric(distancia_planejada),
-           distancia_planejada = distancia_planejada / 1000)
+           distancia_planejada = distancia_planejada/1000)
 } else {
   path_nm <- paste0("../../dados/viagens/", gtfs_processar, "/", ano_velocidade, "/", mes_velocidade, "/")
   nm <- list.files(path = path_nm, full.names = TRUE, pattern = "*.rds", recursive = TRUE)
@@ -54,6 +54,8 @@ criar_sumario_trips <- function(trips, days, service_id) {
                    is.bizday(data, "Rio_Janeiro"),
                    TRUE)) %>% 
     select(-c(data)) %>% 
+    mutate(datetime_chegada = as.POSIXct(datetime_chegada,format="%Y-%m-%dT%H:%M:%SZ"),
+           datetime_partida = as.POSIXct(datetime_partida,format="%Y-%m-%dT%H:%M:%SZ")) %>% 
     mutate(
       tempo_viagem_ajustado = case_when(
         servico == '851' & direction_id == 0 ~ as.integer(difftime(as.POSIXct(datetime_chegada),
@@ -104,7 +106,8 @@ rm(trips,trips_summary_list)
 sumario_combinado <- rbindlist(list(sumario_du,sumario_sab,sumario_dom)) %>% 
   distinct(trip_short_name,direction_id,service_id,hora,.keep_all = T) %>% 
   rename(service_id_join = service_id) %>% 
-  mutate(trip_short_name = as.character(trip_short_name))
+  mutate(trip_short_name = as.character(trip_short_name),
+         direction_id = as.character(direction_id))
 
 velocidade_combinado <- rbindlist(list(vel_media_du,vel_media_sab,vel_media_dom)) %>% 
   distinct(service_id,hora,.keep_all = T) %>% 
@@ -119,7 +122,8 @@ stp_tms <- gtfs$stop_times %>%
   left_join(select(gtfs$frequencies,trip_id,start_time)) %>% 
   group_by(trip_id) %>% 
   mutate(start_time = if_else(is.na(start_time),head(arrival_time,1),start_time),
-         horario_inicio = as.ITime(head(arrival_time,1))) %>% 
+         horario_inicio = as.ITime(head(arrival_time,1)),
+         direction_id = as.character(direction_id)) %>% 
   ungroup() %>% 
   mutate(hora = if_else(lubridate::hour(lubridate::hms(start_time)) > 23,
                         lubridate::hms(start_time)-lubridate::hours(24),
