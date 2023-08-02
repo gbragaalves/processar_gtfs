@@ -135,7 +135,7 @@ gtfs_combi$calendar_dates <- gtfs_combi$calendar_dates %>%
 
 gtfs_combi$stops <- gtfs_combi$stops %>%
   distinct(stop_id, .keep_all = T) %>%
-  filter(!(stop_id %in% pontos_apagar))
+  filter(!(stop_id %in% pontos_apagar$stop_id))
 
 gtfs_combi$feed_info <- gtfs_combi$feed_info[1, ]
 
@@ -152,7 +152,7 @@ gtfs_combi$stop_times <- as.data.table(gtfs_combi$stop_times) %>%
   mutate(timepoint = 0) %>%
   select(-c(pickup_type, drop_off_type, continuous_pickup, continuous_drop_off)) %>%
   mutate(shape_dist_traveled = round(shape_dist_traveled, 2)) %>%
-  filter(!(stop_id %in% pontos_apagar))
+  filter(!(stop_id %in% pontos_apagar$stop_id))
 
 gtfs_combi$fare_attributes <- as.data.table(gtfs_combi$fare_attributes) %>%
   mutate(currency_type = "BRL")

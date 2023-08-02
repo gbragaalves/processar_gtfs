@@ -4,7 +4,7 @@
 pacman::p_load(gtfstools, dplyr, data.table, googlesheets4, purrr, tidyverse, Hmisc)
 
 ano_gtfs <- "2023"
-mes_gtfs <- "07"
+mes_gtfs <- "08"
 quinzena_gtfs <- "01"
 
 endereco_gtfs <- file.path(
@@ -15,6 +15,8 @@ endereco_gtfs <- file.path(
 gtfs <- read_gtfs(endereco_gtfs)
 
 desvios_tabela_id <- "1L7Oq1vqG5S_uOs_NdqgF4HG-Ac6gEyZrzQJYLpZH3OI"
+
+gs4_auth("gbragaalves.smtr@gmail.com")
 
 tabela_desvios <- read_sheet(desvios_tabela_id, sheet = "linhas_desvios")
 descricao_desvios <- read_sheet(desvios_tabela_id, sheet = "descricao_desvios") %>%
@@ -158,3 +160,4 @@ gtfs$calendar_dates <- gtfs$calendar_dates %>%
   ))
 
 write_gtfs(gtfs, endereco_gtfs)
+

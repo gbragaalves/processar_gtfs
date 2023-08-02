@@ -4,7 +4,7 @@ ano_velocidade <- '2023'
 mes_velocidade <- '05'
 
 ano_gtfs <- '2023'
-mes_gtfs <- '07'
+mes_gtfs <- '08'
 quinzena_gtfs <- '01'
 
 gtfs_processar <- 'sppo'
